@@ -185,23 +185,23 @@ class DeveloperScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             _buildProjectCard(
-              title: 'FB4K-StreamEngine',
-              desc: 'High-performance media archiving & dynamic FFmpeg in-memory stream pipeline.',
-              badge: 'Media Engine',
-              onTap: () => _launchUrl('https://github.com/srkamd/FB4K-StreamEngine'),
+              title: 'FB4K Downloader',
+              desc: 'High-speed media archiving & stream processing platform.',
+              badge: 'Live Web App',
+              onTap: () => _launchUrl('https://fb4kdownloader.com'),
             ),
             const SizedBox(height: 10),
             _buildProjectCard(
-              title: 'MyLogoQR',
-              desc: 'Privacy-first custom branding QR code generator with vector SVG/PNG export.',
-              badge: 'Client Utility',
-              onTap: () => _launchUrl('https://github.com/srkamd/mylogoqr'),
+              title: 'MyLogoQR Studio',
+              desc: 'Privacy-first branding QR code studio with vector export.',
+              badge: 'Live Web App',
+              onTap: () => _launchUrl('https://mylogoqr.com'),
             ),
             const SizedBox(height: 10),
             _buildProjectCard(
               title: 'Arrow Puzzle Pro',
-              desc: 'Mind-bending logic game with Warp Portals, Dynamic Shapes & Reverse Generator.',
-              badge: 'Flutter Game',
+              desc: 'Open-source spatial logic puzzle game repository on GitHub.',
+              badge: 'GitHub Repo',
               onTap: () => _launchUrl('https://github.com/srkamd'),
             ),
 
@@ -209,7 +209,7 @@ class DeveloperScreen extends StatelessWidget {
 
             // App Version Footer
             const Text(
-              'Arrow Puzzle v1.1.0 • Built with Flutter & Antigravity',
+              'Arrow Puzzle Pro v1.2.0 • Built with Flutter & Antigravity',
               style: TextStyle(fontSize: 11, color: Colors.white30),
             ),
             const SizedBox(height: 16),

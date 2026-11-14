@@ -147,7 +147,8 @@ To generate a signed bundle for the Google Play Console:
 
 **Shahrukh Ahmad**
 - 🐙 GitHub: [@srkamd](https://github.com/srkamd)
-- 💼 Projects: [FB4K-StreamEngine](https://github.com/srkamd/FB4K-StreamEngine) • [MyLogoQR](https://github.com/srkamd/mylogoqr)
+- 🌐 Live Apps: [FB4K Downloader](https://fb4kdownloader.com) • [MyLogoQR Studio](https://mylogoqr.com)
+- 💼 Repository: [Arrow Puzzle Pro](https://github.com/srkamd/arrow-puzzle-pro)
 - 📬 Contact: Available via GitHub profile
 
 ---
