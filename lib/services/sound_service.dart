@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
@@ -14,111 +13,102 @@ class SoundService {
   bool sfxEnabled = true;
   bool musicEnabled = false;
 
-  final Map<String, String> _cachedSoundPaths = {};
+  final Map<String, Uint8List> _cachedAudioBuffers = {};
   bool _initialized = false;
 
-  Future<void> init() async {
+  void init() {
     if (_initialized) return;
     _initialized = true;
 
-    // Pre-synthesize copyright-free sound effects into temp WAV files
     try {
-      final tempDir = Directory.systemTemp;
-
       // 1. Success Ding Combo sounds (C5 to C6)
       final pentatonicFreqs = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
       for (int i = 0; i < pentatonicFreqs.length; i++) {
-        final bytes = _generateChimeWav(pentatonicFreqs[i]);
-        final file = File('${tempDir.path}/sfx_ding_$i.wav');
-        await file.writeAsBytes(bytes);
-        _cachedSoundPaths['ding_$i'] = file.path;
+        _cachedAudioBuffers['ding_$i'] = _generateChimeWav(pentatonicFreqs[i]);
       }
 
       // 2. Blocked / Error Thud
-      final blockBytes = _generateThudWav();
-      final blockFile = File('${tempDir.path}/sfx_blocked.wav');
-      await blockFile.writeAsBytes(blockBytes);
-      _cachedSoundPaths['blocked'] = blockFile.path;
+      _cachedAudioBuffers['blocked'] = _generateThudWav();
 
       // 3. Hammer Smash
-      final hammerBytes = _generateHammerWav();
-      final hammerFile = File('${tempDir.path}/sfx_hammer.wav');
-      await hammerFile.writeAsBytes(hammerBytes);
-      _cachedSoundPaths['hammer'] = hammerFile.path;
+      _cachedAudioBuffers['hammer'] = _generateHammerWav();
 
       // 4. Portal Warp
-      final warpBytes = _generateWarpWav();
-      final warpFile = File('${tempDir.path}/sfx_warp.wav');
-      await warpFile.writeAsBytes(warpBytes);
-      _cachedSoundPaths['warp'] = warpFile.path;
+      _cachedAudioBuffers['warp'] = _generateWarpWav();
 
       // 5. Win Fanfare
-      final winBytes = _generateWinWav();
-      final winFile = File('${tempDir.path}/sfx_win.wav');
-      await winFile.writeAsBytes(winBytes);
-      _cachedSoundPaths['win'] = winFile.path;
-
+      _cachedAudioBuffers['win'] = _generateWinWav();
     } catch (e) {
-      // In case temp storage is limited, fallback gracefully
+      // Memory synthesis fallback
     }
   }
 
-  // --- Sound Playback Methods ---
+  // --- Sound Playback Methods (In-Memory BytesSource) ---
 
   Future<void> playSuccess(int combo) async {
     if (!sfxEnabled) return;
     HapticFeedback.lightImpact();
 
-    final clampedIdx = combo.clamp(0, 5);
-    final path = _cachedSoundPaths['ding_$clampedIdx'];
-    if (path != null) {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(DeviceFileSource(path));
-    }
+    try {
+      final clampedIdx = combo.clamp(0, 5);
+      final bytes = _cachedAudioBuffers['ding_$clampedIdx'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
   }
 
   Future<void> playBlocked() async {
     if (!sfxEnabled) return;
     HapticFeedback.heavyImpact();
 
-    final path = _cachedSoundPaths['blocked'];
-    if (path != null) {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(DeviceFileSource(path));
-    }
+    try {
+      final bytes = _cachedAudioBuffers['blocked'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
   }
 
   Future<void> playHammer() async {
     if (!sfxEnabled) return;
     HapticFeedback.heavyImpact();
 
-    final path = _cachedSoundPaths['hammer'];
-    if (path != null) {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(DeviceFileSource(path));
-    }
+    try {
+      final bytes = _cachedAudioBuffers['hammer'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
   }
 
   Future<void> playWarp() async {
     if (!sfxEnabled) return;
     HapticFeedback.mediumImpact();
 
-    final path = _cachedSoundPaths['warp'];
-    if (path != null) {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(DeviceFileSource(path));
-    }
+    try {
+      final bytes = _cachedAudioBuffers['warp'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
   }
 
   Future<void> playWin() async {
     if (!sfxEnabled) return;
     HapticFeedback.vibrate();
 
-    final path = _cachedSoundPaths['win'];
-    if (path != null) {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(DeviceFileSource(path));
-    }
+    try {
+      final bytes = _cachedAudioBuffers['win'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
   }
 
   // --- Copyright-Free Procedural Audio Generators ---
@@ -128,7 +118,6 @@ class SoundService {
     final byteLength = 44 + numSamples * 2;
     final buffer = ByteData(byteLength);
 
-    // RIFF chunk descriptor
     buffer.setUint8(0, 0x52); // R
     buffer.setUint8(1, 0x49); // I
     buffer.setUint8(2, 0x46); // F
@@ -139,27 +128,24 @@ class SoundService {
     buffer.setUint8(10, 0x56); // V
     buffer.setUint8(11, 0x45); // E
 
-    // fmt subchunk
     buffer.setUint8(12, 0x66); // f
     buffer.setUint8(13, 0x6D); // m
     buffer.setUint8(14, 0x74); // t
     buffer.setUint8(15, 0x20); // ' '
-    buffer.setUint32(16, 16, Endian.little); // Subchunk1Size (16 for PCM)
-    buffer.setUint16(20, 1, Endian.little);  // AudioFormat (1 for PCM)
-    buffer.setUint16(22, 1, Endian.little);  // NumChannels (1 = Mono)
-    buffer.setUint32(24, sampleRate, Endian.little); // SampleRate
-    buffer.setUint32(28, sampleRate * 2, Endian.little); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-    buffer.setUint16(32, 2, Endian.little);  // BlockAlign (NumChannels * BitsPerSample/8)
-    buffer.setUint16(34, 16, Endian.little); // BitsPerSample (16 bits)
+    buffer.setUint32(16, 16, Endian.little);
+    buffer.setUint16(20, 1, Endian.little);
+    buffer.setUint16(22, 1, Endian.little);
+    buffer.setUint32(24, sampleRate, Endian.little);
+    buffer.setUint32(28, sampleRate * 2, Endian.little);
+    buffer.setUint16(32, 2, Endian.little);
+    buffer.setUint16(34, 16, Endian.little);
 
-    // data subchunk
     buffer.setUint8(36, 0x64); // d
     buffer.setUint8(37, 0x61); // a
     buffer.setUint8(38, 0x74); // t
     buffer.setUint8(39, 0x61); // a
     buffer.setUint32(40, numSamples * 2, Endian.little);
 
-    // Samples
     int offset = 44;
     for (int i = 0; i < numSamples; i++) {
       final sample = samples[i].clamp(-1.0, 1.0);
@@ -179,9 +165,7 @@ class SoundService {
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      // Exponential decay envelope
       final env = exp(-t * 14.0);
-      // Sine wave with overtone
       final val = (sin(2 * pi * freq * t) * 0.75 +
                    sin(2 * pi * (freq * 2.0) * t) * 0.25) * env;
       samples.add(val);
@@ -197,10 +181,8 @@ class SoundService {
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      // Pitch slides rapidly down from 140Hz to 55Hz
       final curFreq = 140.0 - (t / duration) * 85.0;
       final env = exp(-t * 18.0);
-      // Triangle wave with slight punch
       final phase = (curFreq * t) % 1.0;
       final val = (phase < 0.5 ? 4.0 * phase - 1.0 : 3.0 - 4.0 * phase) * env * 0.9;
       samples.add(val);
@@ -232,9 +214,8 @@ class SoundService {
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      // Sci-fi pitch sweep upwards 320 -> 840Hz
       final curFreq = 320.0 + (t / duration) * 520.0;
-      final env = sin(pi * (t / duration)); // parabolic swell
+      final env = sin(pi * (t / duration));
       final val = sin(2 * pi * curFreq * t) * env * 0.8;
       samples.add(val);
     }

@@ -7,17 +7,26 @@ import 'services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+
+  try {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  } catch (_) {}
 
   final storage = GameStorage();
-  await storage.load();
+  try {
+    await storage.load();
+  } catch (_) {}
 
   final auth = AuthService();
-  await auth.load();
+  try {
+    await auth.load();
+  } catch (_) {}
 
-  await SoundService().init();
+  try {
+    SoundService().init();
+  } catch (_) {}
 
   runApp(ArrowPuzzleApp(storage: storage, auth: auth));
 }

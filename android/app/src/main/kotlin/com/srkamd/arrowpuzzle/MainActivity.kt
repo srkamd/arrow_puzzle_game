@@ -1,4 +1,4 @@
-package com.easybrain.arrow_puzzle_flutter
+package com.srkamd.arrowpuzzle
 
 import io.flutter.embedding.android.FlutterActivity
 
