@@ -104,8 +104,8 @@ arrow_puzzle_flutter/
 ### Steps
 ```bash
 # 1. Clone the repository
-git clone https://github.com/srkamd/arrow-puzzle-pro.git
-cd arrow-puzzle-pro
+git clone https://github.com/srkamd/arrow_puzzle_game.git
+cd arrow_puzzle_game
 
 # 2. Fetch packages
 flutter pub get
@@ -148,7 +148,7 @@ To generate a signed bundle for the Google Play Console:
 **Shahrukh Ahmad**
 - 🐙 GitHub: [@srkamd](https://github.com/srkamd)
 - 🌐 Live Apps: [FB4K Downloader](https://fb4kdownloader.com) • [MyLogoQR Studio](https://mylogoqr.com)
-- 💼 Repository: [Arrow Puzzle Pro](https://github.com/srkamd/arrow-puzzle-pro)
+- 💼 Repository: [Arrow Puzzle Pro](https://github.com/srkamd/arrow_puzzle_game)
 - 📬 Contact: Available via GitHub profile
 
 ---
