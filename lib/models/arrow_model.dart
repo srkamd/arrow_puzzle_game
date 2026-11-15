@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 enum ArrowDirection { up, right, down, left }
 
-enum TileType { arrow, obstacle, portal, voidCell }
+enum TileType { arrow, obstacle, bonusStar, voidCell }
 
 enum MapShape { square, cross, diamond, donut }
 
@@ -65,7 +65,6 @@ class GameTile {
   int row;
   int col;
   ArrowDirection direction;
-  int portalPairId; // 1 for Portal A, 2 for Portal B
   Color? customColor;
 
   GameTile({
@@ -74,7 +73,6 @@ class GameTile {
     required this.row,
     required this.col,
     this.direction = ArrowDirection.up,
-    this.portalPairId = 0,
     this.customColor,
   });
 
@@ -85,7 +83,6 @@ class GameTile {
       row: row,
       col: col,
       direction: direction,
-      portalPairId: portalPairId,
       customColor: customColor,
     );
   }

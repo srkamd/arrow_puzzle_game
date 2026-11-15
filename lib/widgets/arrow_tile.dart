@@ -33,28 +33,31 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
   @override
   void initState() {
     super.initState();
-    // 1. Recoil & Shake Animation for Blocked Moves
+    // 1. Elastic Recoil Animation for Blocked Moves (NO RED COLOR - Just spring recoil)
     _shakeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 360),
+      duration: const Duration(milliseconds: 320),
     );
     _shakeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _shakeController, curve: Curves.elasticOut),
     );
 
-    // 2. Rocket Fly-Out Animation for Correct Moves
+    // 2. Juicy Rocket Fly-Out Animation for Correct Moves
     _flyController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 240),
     );
-    _flyTranslateAnim = Tween<double>(begin: 0.0, end: 320.0).animate(
+    _flyTranslateAnim = Tween<double>(begin: 0.0, end: 340.0).animate(
       CurvedAnimation(parent: _flyController, curve: Curves.fastOutSlowIn),
     );
     _flyScaleAnim = Tween<double>(begin: 1.0, end: 0.4).animate(
       CurvedAnimation(parent: _flyController, curve: Curves.easeIn),
     );
     _flyOpacityAnim = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _flyController, curve: const Interval(0.5, 1.0, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _flyController,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+      ),
     );
   }
 
@@ -65,7 +68,7 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
     super.dispose();
   }
 
-  // Triggered when move is blocked
+  // Triggered when move is blocked (shakes cleanly without changing to red color)
   void triggerShake() {
     _shakeController.forward(from: 0.0);
   }
@@ -85,47 +88,45 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
       return const SizedBox.shrink();
     }
 
-    // 2. WARP PORTAL (Blue or Orange Gate)
-    if (widget.tile.type == TileType.portal) {
-      final isPortalA = widget.tile.portalPairId == 1;
-      final portalColor = isPortalA ? const Color(0xFF06B6D4) : const Color(0xFFF97316);
-
+    // 2. BONUS STAR ITEM (Arrows fly through to collect bonus coins!)
+    if (widget.tile.type == TileType.bonusStar) {
       return Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              portalColor.withValues(alpha: 0.9),
-              portalColor.withValues(alpha: 0.3),
+              const Color(0xFFF59E0B).withValues(alpha: 0.4),
               Colors.transparent,
             ],
           ),
-          border: Border.all(color: portalColor, width: 2),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: portalColor.withValues(alpha: 0.6),
-              blurRadius: 12,
-              spreadRadius: 2,
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+              blurRadius: 10,
             ),
           ],
         ),
-        child: Center(
+        child: const Center(
           child: Text(
-            isPortalA ? '🌀' : '🪐',
-            style: const TextStyle(fontSize: 22),
+            '⭐',
+            style: TextStyle(fontSize: 22),
           ),
         ),
       );
     }
 
-    // 3. OBSTACLE ROCK
+    // 3. OBSTACLE ROCK (Blocks arrows until smashed with hammer)
     if (widget.tile.type == TileType.obstacle) {
       return GestureDetector(
         onTap: widget.onTap,
         child: Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF64748B), Color(0xFF334155)],
+              colors: [Color(0xFF475569), Color(0xFF1E293B)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -149,18 +150,18 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
       );
     }
 
-    // 4. ARROW TILE (With Elastic Shake and Rocket Zoom Fly-Out)
+    // 4. ARROW TILE (Vibrant Modern Cyan & Indigo - NO RED ON ERROR)
     return AnimatedBuilder(
       animation: Listenable.merge([_shakeAnim, _flyController]),
       builder: (context, child) {
-        // Forward impact + recoil offset for blocked
+        // Forward impact + elastic spring recoil offset for blocked moves
         double offsetX = 0.0;
         double offsetY = 0.0;
 
         if (_shakeController.isAnimating) {
           final progress = _shakeAnim.value;
-          // Impact forward along heading vector, then elastic spring bounce
-          final shakeDisplacement = (1.0 - progress) * 10.0 * sin(progress * pi * 5);
+          // Smooth spring recoil along heading axis
+          final shakeDisplacement = (1.0 - progress) * 9.0 * sin(progress * pi * 4);
           offsetX = widget.tile.direction.dc * shakeDisplacement;
           offsetY = widget.tile.direction.dr * shakeDisplacement;
         }
@@ -184,6 +185,7 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
+                    // Clean, elegant Indigo / Cyber Cyan colors - NEVER RED
                     gradient: widget.isHint
                         ? const LinearGradient(
                             colors: [Color(0xFFFDE047), Color(0xFFF59E0B)],
@@ -199,8 +201,8 @@ class ArrowTileWidgetState extends State<ArrowTileWidget>
                     border: Border.all(
                       color: widget.isHint
                           ? const Color(0xFFF59E0B)
-                          : const Color(0xFF38BDF8).withValues(alpha: 0.4),
-                      width: widget.isHint ? 2.5 : 1.2,
+                          : const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                      width: widget.isHint ? 2.5 : 1.4,
                     ),
                     boxShadow: widget.isHint
                         ? [

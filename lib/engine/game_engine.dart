@@ -4,12 +4,12 @@ import '../models/arrow_model.dart';
 class RaycastResult {
   final bool isClear;
   final GameTile? blockedBy;
-  final List<GameTile> portalsUsed;
+  final List<GameTile> collectedStars;
 
   RaycastResult({
     required this.isClear,
     this.blockedBy,
-    this.portalsUsed = const [],
+    this.collectedStars = const [],
   });
 }
 
@@ -18,12 +18,14 @@ class HistoryEntry {
   final GameTile tile;
   final ArrowDirection? prevDir;
   final int livesBefore;
+  final List<GameTile> restoredStars;
 
   HistoryEntry({
     required this.action,
     required this.tile,
     this.prevDir,
     required this.livesBefore,
+    this.restoredStars = const [],
   });
 }
 
@@ -36,10 +38,6 @@ class GameEngine {
   late List<List<GameTile?>> grid;
   final List<HistoryEntry> history = [];
   String? hintTileId;
-
-  // Portals
-  GameTile? portalA;
-  GameTile? portalB;
 
   GameEngine({
     this.size = 5,
@@ -59,7 +57,6 @@ class GameEngine {
       case MapShape.square:
         return true;
       case MapShape.cross:
-        // Exclude 4 corners of size 1 or 2
         final corner = size >= 6 ? 2 : 1;
         final isTopLeft = r < corner && c < corner;
         final isTopRight = r < corner && c >= size - corner;
@@ -80,7 +77,7 @@ class GameEngine {
     required int levelSize,
     required MapShape shape,
     int obstacleCount = 1,
-    bool withPortals = false,
+    bool withBonusStars = false,
   }) {
     size = levelSize;
     currentShape = shape;
@@ -88,8 +85,6 @@ class GameEngine {
     moves = 0;
     history.clear();
     hintTileId = null;
-    portalA = null;
-    portalB = null;
     initEmptyGrid();
 
     // 1. Mark void cells for non-square map shapes
@@ -109,8 +104,8 @@ class GameEngine {
     final rand = Random();
     int idCounter = 1;
 
-    // 2. Generate Paired Portals if requested
-    if (withPortals && size >= 5) {
+    // 2. Generate Collectible Bonus Stars (Reward items that arrows can fly through!)
+    if (withBonusStars && size >= 5) {
       final validCoords = <Point<int>>[];
       for (int r = 1; r < size - 1; r++) {
         for (int c = 1; c < size - 1; c++) {
@@ -120,32 +115,22 @@ class GameEngine {
         }
       }
 
-      if (validCoords.length >= 2) {
+      if (validCoords.isNotEmpty) {
         validCoords.shuffle(rand);
-        final p1 = validCoords[0];
-        final p2 = validCoords[1];
-
-        portalA = GameTile(
-          id: 'portal_1',
-          type: TileType.portal,
-          row: p1.x,
-          col: p1.y,
-          portalPairId: 1,
-        );
-        portalB = GameTile(
-          id: 'portal_2',
-          type: TileType.portal,
-          row: p2.x,
-          col: p2.y,
-          portalPairId: 2,
-        );
-
-        grid[p1.x][p1.y] = portalA;
-        grid[p2.x][p2.y] = portalB;
+        final starCount = min(2, validCoords.length);
+        for (int i = 0; i < starCount; i++) {
+          final pt = validCoords[i];
+          grid[pt.x][pt.y] = GameTile(
+            id: 'star_$i',
+            type: TileType.bonusStar,
+            row: pt.x,
+            col: pt.y,
+          );
+        }
       }
     }
 
-    // 3. Place Obstacles
+    // 3. Place Obstacles (Rocks)
     for (int i = 0; i < obstacleCount; i++) {
       if (size > 3) {
         final r = rand.nextInt(size - 2) + 1;
@@ -211,7 +196,7 @@ class GameEngine {
     }
   }
 
-  // --- Raycast Path Checking with Portal Warping ---
+  // --- Raycast Path Checking (Stars are collected, obstacles block!) ---
   RaycastResult checkPath(GameTile tile) {
     if (tile.type != TileType.arrow) {
       return RaycastResult(isClear: false);
@@ -219,32 +204,20 @@ class GameEngine {
 
     int r = tile.row + tile.direction.dr;
     int c = tile.col + tile.direction.dc;
-    final portalsUsed = <GameTile>[];
-    int warpSafety = 0;
+    final collectedStars = <GameTile>[];
 
     while (r >= 0 && r < size && c >= 0 && c < size) {
       final cell = grid[r][c];
 
       if (cell != null) {
         if (cell.type == TileType.voidCell) {
-          // Arrow escapes through the void cutout border!
+          // Arrow escapes through natural cutout border!
           break;
-        } else if (cell.type == TileType.portal && warpSafety < 2) {
-          // WARP TO PAIRED PORTAL!
-          warpSafety++;
-          portalsUsed.add(cell);
-          final otherPortal = (cell.id == portalA?.id) ? portalB : portalA;
-
-          if (otherPortal != null) {
-            // Emerge on the other side of portal in same direction
-            r = otherPortal.row + tile.direction.dr;
-            c = otherPortal.col + tile.direction.dc;
-            continue;
-          } else {
-            return RaycastResult(isClear: false, blockedBy: cell);
-          }
+        } else if (cell.type == TileType.bonusStar) {
+          // Stars DO NOT block! Arrow passes through and collects them!
+          collectedStars.add(cell);
         } else {
-          // Blocking arrow or obstacle found
+          // Blocking arrow or rock obstacle found
           return RaycastResult(isClear: false, blockedBy: cell);
         }
       }
@@ -253,7 +226,7 @@ class GameEngine {
       c += tile.direction.dc;
     }
 
-    return RaycastResult(isClear: true, portalsUsed: portalsUsed);
+    return RaycastResult(isClear: true, collectedStars: collectedStars);
   }
 
   GameTile? findFreeArrow() {
@@ -272,11 +245,17 @@ class GameEngine {
     return candidates[Random().nextInt(candidates.length)];
   }
 
-  void removeTile(GameTile tile) {
+  void removeTile(GameTile tile, {List<GameTile> collectedStars = const []}) {
+    // Clear collected stars along the path
+    for (final star in collectedStars) {
+      grid[star.row][star.col] = null;
+    }
+
     history.add(HistoryEntry(
       action: 'REMOVE',
       tile: tile.clone(),
       livesBefore: lives,
+      restoredStars: collectedStars,
     ));
     grid[tile.row][tile.col] = null;
     moves++;
@@ -284,7 +263,7 @@ class GameEngine {
 
   bool smashTile(int r, int c) {
     final item = grid[r][c];
-    if (item == null || item.type == TileType.voidCell || item.type == TileType.portal) {
+    if (item == null || item.type == TileType.voidCell) {
       return false;
     }
 
@@ -316,6 +295,10 @@ class GameEngine {
 
     if (entry.action == 'REMOVE' || entry.action == 'HAMMER') {
       grid[entry.tile.row][entry.tile.col] = entry.tile;
+      // Restore collected stars
+      for (final star in entry.restoredStars) {
+        grid[star.row][star.col] = star;
+      }
     } else if (entry.action == 'ROTATE') {
       entry.tile.direction = entry.prevDir!;
     }

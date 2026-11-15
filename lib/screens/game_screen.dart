@@ -72,37 +72,37 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // --- Dynamic World Theming (Changes every 8 levels) ---
+  // --- Refined Modern Atmosphere Gradients ---
   LinearGradient _getWorldGradient(int level) {
     final world = ((level - 1) ~/ 8) % 4;
     switch (world) {
-      case 0: // Cyber Nebula
+      case 0: // Midnight Obsidian
         return const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E1B4B)],
+          colors: [Color(0xFF0B0F19), Color(0xFF111827), Color(0xFF0F172A)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
-      case 1: // Amber Forge
+      case 1: // Royal Indigo
         return const LinearGradient(
-          colors: [Color(0xFF1C1917), Color(0xFF292524), Color(0xFF451A03)],
+          colors: [Color(0xFF0A0F24), Color(0xFF141B3B), Color(0xFF1E1B4B)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
-      case 2: // Arctic Glacier
+      case 2: // Nordic Ice
         return const LinearGradient(
-          colors: [Color(0xFF082F49), Color(0xFF0C4A6E), Color(0xFF0369A1)],
+          colors: [Color(0xFF071B2F), Color(0xFF0C2D48), Color(0xFF145DA0)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
-      case 3: // Emerald Matrix
+      case 3: // Cyber Jade
         return const LinearGradient(
-          colors: [Color(0xFF022C22), Color(0xFF064E3B), Color(0xFF065F46)],
+          colors: [Color(0xFF021B16), Color(0xFF042E25), Color(0xFF064E3B)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
       default:
         return const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          colors: [Color(0xFF0B0F19), Color(0xFF111827)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
@@ -119,14 +119,15 @@ class _GameScreenState extends State<GameScreen> {
     final shape = _getShapeForLevel(level);
     final size = level < 6 ? 5 : (level < 14 ? 6 : 7);
     final obstacles = (level / 6).floor().clamp(0, 3);
-    final withPortals = (level % 4 == 0);
+    // Collectible Bonus Stars appear every 3rd level!
+    final withBonusStars = (level >= 3 && level % 3 == 0);
 
     _engine = GameEngine(size: size, maxLives: 3, currentShape: shape);
     _engine.generateLevel(
       levelSize: size,
       shape: shape,
       obstacleCount: obstacles,
-      withPortals: withPortals,
+      withBonusStars: withBonusStars,
     );
 
     for (int r = 0; r < size; r++) {
@@ -140,18 +141,12 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {});
   }
 
-  void _showComboPopup(int combo) {
-    if (combo < 2) return;
-    String text = 'GOOD! x$combo';
-    if (combo == 3) text = 'GREAT! x3 🔥';
-    if (combo == 4) text = 'AMAZING! x4 ⚡';
-    if (combo >= 5) text = 'UNSTOPPABLE! x$combo 🚀';
-
+  void _showFloatingMessage(String text) {
     setState(() {
       _floatingComboText = text;
     });
 
-    Future.delayed(const Duration(milliseconds: 900), () {
+    Future.delayed(const Duration(milliseconds: 950), () {
       if (mounted) {
         setState(() {
           _floatingComboText = null;
@@ -165,7 +160,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_engine.lives <= 0 && !widget.isZen) return;
 
     final item = _engine.grid[r][c];
-    if (item == null || item.type == TileType.voidCell || item.type == TileType.portal) return;
+    if (item == null || item.type == TileType.voidCell || item.type == TileType.bonusStar) return;
 
     // BOOSTER: HAMMER
     if (_activeBooster == 'hammer') {
@@ -185,7 +180,7 @@ class _GameScreenState extends State<GameScreen> {
     // BOOSTER: ROTATE
     if (_activeBooster == 'rotate') {
       if (item.type == TileType.arrow) {
-        SoundService().playSuccess(1);
+        SoundService().playSuccess(0);
         setState(() {
           _engine.rotateTile(item);
           _activeBooster = null;
@@ -194,39 +189,50 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    // NORMAL ARROW TAP ACTION
+    // NORMAL ARROW TAP
     if (item.type == TileType.arrow) {
       _engine.hintTileId = null;
       final check = _engine.checkPath(item);
 
       if (check.isClear) {
-        // --- 1. CORRECT MOVE ---
+        // --- 1. CORRECT MOVE (JUICY & SATISFYING) ---
         _isAnimatingMove = true;
         _comboCount++;
 
-        // Portal warp sound if portal was traversed
-        if (check.portalsUsed.isNotEmpty) {
-          SoundService().playWarp();
+        // Bonus Star Collected along flight path!
+        if (check.collectedStars.isNotEmpty) {
+          final bonusCoins = check.collectedStars.length * 10;
+          widget.storage.coins += bonusCoins;
+          widget.storage.save();
+          SoundService().playStarCollect();
+          _showFloatingMessage('⭐ STAR BONUS! +$bonusCoins 🪙');
         } else {
+          // Melodic Pentatonic Combo Pop!
           SoundService().playSuccess(_comboCount);
+          if (_comboCount >= 2) {
+            String tag = 'GREAT! x$_comboCount';
+            if (_comboCount == 3) tag = 'AWESOME! x3 🔥';
+            if (_comboCount == 4) tag = 'BRILLIANT! x4 ⚡';
+            if (_comboCount >= 5) tag = 'UNSTOPPABLE! x$_comboCount 🚀';
+            _showFloatingMessage(tag);
+          }
         }
 
-        _showComboPopup(_comboCount);
-
-        // Rocket Fly-out Animation
+        // Rocket zoom animation
         await _tileKeys[item.id]?.currentState?.triggerFlyOut();
 
         setState(() {
-          _engine.removeTile(item);
+          _engine.removeTile(item, collectedStars: check.collectedStars);
           _isAnimatingMove = false;
         });
         _checkWin();
 
       } else {
-        // --- 2. BLOCKED / INCORRECT MOVE ---
+        // --- 2. BLOCKED MOVE (NO RED COLOR - SOFT TACTILE RECOIL) ---
         _comboCount = 0; // Reset streak
-        SoundService().playBlocked();
+        SoundService().playBlocked(); // Soft wooden tap
 
+        // Trigger spring recoil shake without any red tint!
         _tileKeys[item.id]?.currentState?.triggerShake();
 
         if (!widget.isZen) {
@@ -256,7 +262,7 @@ class _GameScreenState extends State<GameScreen> {
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: const Color(0xFF111827),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Center(
             child: Text('🎉 Level Cleared!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -296,13 +302,13 @@ class _GameScreenState extends State<GameScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: const Color(0xFF111827),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Center(
           child: Text('💔 Out of Lives!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
         content: const Text(
-          'Too many collisions with obstacles!',
+          'Blocked path collisions cost lives. Plan ahead!',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white70),
         ),
@@ -347,7 +353,7 @@ class _GameScreenState extends State<GameScreen> {
       SnackBar(
         content: Text(msg),
         duration: const Duration(seconds: 2),
-        backgroundColor: const Color(0xFF334155),
+        backgroundColor: const Color(0xFF1F2937),
       ),
     );
   }
@@ -400,7 +406,7 @@ class _GameScreenState extends State<GameScreen> {
                   ],
                 ),
 
-                // Floating Combo Streak Banner
+                // Floating Banner for Combos & Star Bonuses
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   height: _floatingComboText != null ? 36 : 8,
@@ -410,13 +416,13 @@ class _GameScreenState extends State<GameScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
+                              colors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
-                                blurRadius: 10,
+                                color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                blurRadius: 12,
                               )
                             ],
                           ),
@@ -424,7 +430,7 @@ class _GameScreenState extends State<GameScreen> {
                             _floatingComboText!,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
@@ -441,12 +447,12 @@ class _GameScreenState extends State<GameScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.7),
+                      color: const Color(0xFF0B0F19).withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.25)),
+                      border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.2)),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                          color: const Color(0xFF38BDF8).withValues(alpha: 0.08),
                           blurRadius: 24,
                         )
                       ],
@@ -467,7 +473,7 @@ class _GameScreenState extends State<GameScreen> {
                         if (tile == null) {
                           return Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.02),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(12),
                             ),
                           );
@@ -490,7 +496,7 @@ class _GameScreenState extends State<GameScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B).withValues(alpha: 0.9),
+                    color: const Color(0xFF111827).withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white12),
                   ),
@@ -528,7 +534,7 @@ class _GameScreenState extends State<GameScreen> {
                           final free = _engine.findFreeArrow();
                           if (free != null) {
                             if (widget.storage.useBooster('hint')) {
-                              SoundService().playSuccess(2);
+                              SoundService().playSuccess(0);
                               setState(() {
                                 _engine.hintTileId = free.id;
                               });
@@ -579,7 +585,7 @@ class _GameScreenState extends State<GameScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFF59E0B).withValues(alpha: 0.25) : const Color(0xFF334155),
+              color: isActive ? const Color(0xFFF59E0B).withValues(alpha: 0.25) : const Color(0xFF1F2937),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isActive ? const Color(0xFFF59E0B) : Colors.white12,

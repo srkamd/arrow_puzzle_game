@@ -11,7 +11,6 @@ class SoundService {
   final AudioPlayer _sfxPlayer = AudioPlayer();
 
   bool sfxEnabled = true;
-  bool musicEnabled = false;
 
   final Map<String, Uint8List> _cachedAudioBuffers = {};
   bool _initialized = false;
@@ -21,29 +20,29 @@ class SoundService {
     _initialized = true;
 
     try {
-      // 1. Success Ding Combo sounds (C5 to C6)
-      final pentatonicFreqs = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
-      for (int i = 0; i < pentatonicFreqs.length; i++) {
-        _cachedAudioBuffers['ding_$i'] = _generateChimeWav(pentatonicFreqs[i]);
+      // 1. Juicy Marimba / Kalimba Pop Combo Chimes (C5, D5, E5, G5, A5, C6)
+      final pentatonicNotes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+      for (int i = 0; i < pentatonicNotes.length; i++) {
+        _cachedAudioBuffers['pop_$i'] = _generateMarimbaPopWav(pentatonicNotes[i]);
       }
 
-      // 2. Blocked / Error Thud
-      _cachedAudioBuffers['blocked'] = _generateThudWav();
+      // 2. Soft Tactile Wooden Tap / "Dook" (Blocked Move - Non-irritating, playful)
+      _cachedAudioBuffers['blocked'] = _generateSoftWoodenTapWav();
 
-      // 3. Hammer Smash
-      _cachedAudioBuffers['hammer'] = _generateHammerWav();
+      // 3. Star Collect Sparkle Bling
+      _cachedAudioBuffers['star_collect'] = _generateStarCollectWav();
 
-      // 4. Portal Warp
-      _cachedAudioBuffers['warp'] = _generateWarpWav();
+      // 4. Hammer Smash Rock Crunch
+      _cachedAudioBuffers['hammer'] = _generateHammerCrunchWav();
 
-      // 5. Win Fanfare
-      _cachedAudioBuffers['win'] = _generateWinWav();
+      // 5. Level Victory Melodic Fanfare
+      _cachedAudioBuffers['win'] = _generateWinFanfareWav();
     } catch (e) {
       // Memory synthesis fallback
     }
   }
 
-  // --- Sound Playback Methods (In-Memory BytesSource) ---
+  // --- Sound Playback Methods (In-Memory Direct Audio) ---
 
   Future<void> playSuccess(int combo) async {
     if (!sfxEnabled) return;
@@ -51,7 +50,7 @@ class SoundService {
 
     try {
       final clampedIdx = combo.clamp(0, 5);
-      final bytes = _cachedAudioBuffers['ding_$clampedIdx'];
+      final bytes = _cachedAudioBuffers['pop_$clampedIdx'];
       if (bytes != null) {
         await _sfxPlayer.stop();
         await _sfxPlayer.play(BytesSource(bytes));
@@ -61,10 +60,23 @@ class SoundService {
 
   Future<void> playBlocked() async {
     if (!sfxEnabled) return;
-    HapticFeedback.heavyImpact();
+    HapticFeedback.mediumImpact();
 
     try {
       final bytes = _cachedAudioBuffers['blocked'];
+      if (bytes != null) {
+        await _sfxPlayer.stop();
+        await _sfxPlayer.play(BytesSource(bytes));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> playStarCollect() async {
+    if (!sfxEnabled) return;
+    HapticFeedback.selectionClick();
+
+    try {
+      final bytes = _cachedAudioBuffers['star_collect'];
       if (bytes != null) {
         await _sfxPlayer.stop();
         await _sfxPlayer.play(BytesSource(bytes));
@@ -85,19 +97,6 @@ class SoundService {
     } catch (_) {}
   }
 
-  Future<void> playWarp() async {
-    if (!sfxEnabled) return;
-    HapticFeedback.mediumImpact();
-
-    try {
-      final bytes = _cachedAudioBuffers['warp'];
-      if (bytes != null) {
-        await _sfxPlayer.stop();
-        await _sfxPlayer.play(BytesSource(bytes));
-      }
-    } catch (_) {}
-  }
-
   Future<void> playWin() async {
     if (!sfxEnabled) return;
     HapticFeedback.vibrate();
@@ -111,7 +110,7 @@ class SoundService {
     } catch (_) {}
   }
 
-  // --- Copyright-Free Procedural Audio Generators ---
+  // --- 100% Royalty-Free High-Quality Audio Synthesizer (22050Hz Mono PCM) ---
 
   Uint8List _createWav(int sampleRate, List<double> samples) {
     final numSamples = samples.length;
@@ -157,7 +156,73 @@ class SoundService {
     return buffer.buffer.asUint8List();
   }
 
-  Uint8List _generateChimeWav(double freq) {
+  // Juicy Marimba / Kalimba Pop with resonant overtones
+  Uint8List _generateMarimbaPopWav(double freq) {
+    const sampleRate = 22050;
+    const duration = 0.20;
+    final totalSamples = (sampleRate * duration).toInt();
+    final samples = <double>[];
+
+    for (int i = 0; i < totalSamples; i++) {
+      final t = i / sampleRate;
+      // Fast percussive attack (2ms) then smooth exponential decay
+      final attack = min(1.0, t / 0.003);
+      final decay = exp(-t * 16.0);
+      final env = attack * decay;
+
+      // Subtle upward pitch flick on impact creates the bubbly "pop"
+      final pitchSlide = 1.0 + exp(-t * 80.0) * 0.08;
+      final curF = freq * pitchSlide;
+
+      // Acoustic Marimba harmonic formula: fundamental + 2.76x overtone
+      final fundamental = sin(2 * pi * curF * t) * 0.72;
+      final overtone = sin(2 * pi * (curF * 2.756) * t) * 0.28 * exp(-t * 30.0);
+
+      samples.add((fundamental + overtone) * env);
+    }
+    return _createWav(sampleRate, samples);
+  }
+
+  // Soft Tactile Wooden Tap / "Dook" (Soft, comical, clean error feedback)
+  Uint8List _generateSoftWoodenTapWav() {
+    const sampleRate = 22050;
+    const duration = 0.09;
+    final totalSamples = (sampleRate * duration).toInt();
+    final samples = <double>[];
+
+    for (int i = 0; i < totalSamples; i++) {
+      final t = i / sampleRate;
+      final env = exp(-t * 36.0);
+      // Soft pitch drop 115Hz -> 50Hz
+      final curF = 115.0 - (t / duration) * 65.0;
+      final s = sin(2 * pi * curF * t) * env * 0.75;
+      samples.add(s);
+    }
+    return _createWav(sampleRate, samples);
+  }
+
+  // Twinkling Star Collect Bling (High sparkling double-chime)
+  Uint8List _generateStarCollectWav() {
+    const sampleRate = 22050;
+    const duration = 0.24;
+    final totalSamples = (sampleRate * duration).toInt();
+    final samples = <double>[];
+
+    for (int i = 0; i < totalSamples; i++) {
+      final t = i / sampleRate;
+      // Note 1 (E6: 1318Hz) then Note 2 (A6: 1760Hz)
+      final isSecond = t > 0.08;
+      final noteT = isSecond ? t - 0.08 : t;
+      final freq = isSecond ? 1760.0 : 1318.0;
+      final env = exp(-noteT * 18.0);
+      final s = sin(2 * pi * freq * t) * env * 0.6;
+      samples.add(s);
+    }
+    return _createWav(sampleRate, samples);
+  }
+
+  // Hammer Smash Rock Crunch
+  Uint8List _generateHammerCrunchWav() {
     const sampleRate = 22050;
     const duration = 0.22;
     final totalSamples = (sampleRate * duration).toInt();
@@ -165,78 +230,30 @@ class SoundService {
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      final env = exp(-t * 14.0);
-      final val = (sin(2 * pi * freq * t) * 0.75 +
-                   sin(2 * pi * (freq * 2.0) * t) * 0.25) * env;
-      samples.add(val);
-    }
-    return _createWav(sampleRate, samples);
-  }
-
-  Uint8List _generateThudWav() {
-    const sampleRate = 22050;
-    const duration = 0.18;
-    final totalSamples = (sampleRate * duration).toInt();
-    final samples = <double>[];
-
-    for (int i = 0; i < totalSamples; i++) {
-      final t = i / sampleRate;
-      final curFreq = 140.0 - (t / duration) * 85.0;
       final env = exp(-t * 18.0);
-      final phase = (curFreq * t) % 1.0;
-      final val = (phase < 0.5 ? 4.0 * phase - 1.0 : 3.0 - 4.0 * phase) * env * 0.9;
-      samples.add(val);
+      final noise = (Random().nextDouble() * 2.0 - 1.0) * 0.45;
+      final tone = sin(2 * pi * 85.0 * (1.0 - t / duration) * t) * 0.55;
+      samples.add((tone + noise) * env * 0.85);
     }
     return _createWav(sampleRate, samples);
   }
 
-  Uint8List _generateHammerWav() {
+  // Level Win Fanfare (Ascending warm triad chord: C5 -> E5 -> G5 -> C6)
+  Uint8List _generateWinFanfareWav() {
     const sampleRate = 22050;
-    const duration = 0.25;
-    final totalSamples = (sampleRate * duration).toInt();
-    final samples = <double>[];
-
-    for (int i = 0; i < totalSamples; i++) {
-      final t = i / sampleRate;
-      final env = exp(-t * 16.0);
-      final noise = (Random().nextDouble() * 2.0 - 1.0) * 0.5;
-      final tone = sin(2 * pi * 80.0 * (1.0 - t / duration) * t) * 0.5;
-      samples.add((tone + noise) * env * 0.9);
-    }
-    return _createWav(sampleRate, samples);
-  }
-
-  Uint8List _generateWarpWav() {
-    const sampleRate = 22050;
-    const duration = 0.28;
-    final totalSamples = (sampleRate * duration).toInt();
-    final samples = <double>[];
-
-    for (int i = 0; i < totalSamples; i++) {
-      final t = i / sampleRate;
-      final curFreq = 320.0 + (t / duration) * 520.0;
-      final env = sin(pi * (t / duration));
-      final val = sin(2 * pi * curFreq * t) * env * 0.8;
-      samples.add(val);
-    }
-    return _createWav(sampleRate, samples);
-  }
-
-  Uint8List _generateWinWav() {
-    const sampleRate = 22050;
-    const duration = 0.55;
+    const duration = 0.50;
     final totalSamples = (sampleRate * duration).toInt();
     final samples = <double>[];
     final notes = [523.25, 659.25, 783.99, 1046.50];
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      final noteIdx = ((t / duration) * 4).floor().clamp(0, 3);
-      final freq = notes[noteIdx];
-      final noteT = t - (noteIdx * (duration / 4.0));
-      final env = exp(-noteT * 12.0);
-      final val = sin(2 * pi * freq * t) * env * 0.7;
-      samples.add(val);
+      final step = ((t / duration) * 4).floor().clamp(0, 3);
+      final freq = notes[step];
+      final stepT = t - (step * (duration / 4.0));
+      final env = exp(-stepT * 12.0);
+      final s = sin(2 * pi * freq * t) * env * 0.7;
+      samples.add(s);
     }
     return _createWav(sampleRate, samples);
   }
