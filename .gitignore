@@ -55,4 +55,5 @@ app.*.map.json
 key.properties
 local.properties
 /android/.gradle/
+/android/build/
 /android/app/build/
